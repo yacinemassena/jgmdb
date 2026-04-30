@@ -6,12 +6,23 @@ Lightweight video platform — Netflix-style profile picker, library, per-profil
 
 ```sh
 python3 -m http.server 8765
-open "http://localhost:8765/JG%20LMS.html"
+open "http://localhost:8765/"
 ```
+
+Or use the bundled Go server:
+
+```sh
+go run main.go
+# PORT defaults to 8080
+```
+
+## Deploy
+
+Includes a tiny Go static-file server (`main.go`) so Railpack/Railway can build & run with zero config — `start.sh` runs the binary if present, otherwise `go run main.go`.
 
 ## Files
 
-- `JG LMS.html` — entrypoint, loads React + Babel + Vimeo Player API
+- `index.html` — entrypoint, loads React + Babel + Vimeo Player API
 - `app.jsx` — root component, video catalog, hash routing, localStorage state
 - `profiles.jsx` — profile picker, create, edit
 - `home.jsx` — library, hero, video cards
