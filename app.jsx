@@ -104,8 +104,9 @@ const AVATAR_COLORS = [
   { bg: "linear-gradient(135deg, #422006 0%, #ca8a04 100%)", solid: "#CA8A04" }
 ];
 
-// ── Storage layer (mock backend) ─────────────────────────────────────────────
-const STORAGE_KEY = "jg_lms_state_v1";
+// ── Storage layer (server-side JSON file via Go API) ─────────────────────────
+const STATE_URL = "/api/state";
+const SAVE_DEBOUNCE_MS = 800;
 
 const defaultState = {
   profiles: [],
@@ -114,21 +115,20 @@ const defaultState = {
   watchEvents: []
 };
 
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return defaultState;
-    const parsed = JSON.parse(raw);
-    return { ...defaultState, ...parsed };
-  } catch (e) {
-    return defaultState;
-  }
+async function fetchState() {
+  const r = await fetch(STATE_URL, { cache: "no-store" });
+  if (!r.ok) throw new Error("fetch state failed: " + r.status);
+  const parsed = await r.json();
+  return { ...defaultState, ...parsed };
 }
 
-function saveState(state) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-  } catch (e) { /* noop */ }
+async function postState(state) {
+  const r = await fetch(STATE_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(state)
+  });
+  if (!r.ok) throw new Error("save state failed: " + r.status);
 }
 
 // ── Utility ──────────────────────────────────────────────────────────────────
@@ -181,11 +181,33 @@ function useHashRoute() {
 
 // ── Root App ─────────────────────────────────────────────────────────────────
 function App() {
-  const [state, setState] = useState(loadState);
+  const [state, setState] = useState(null); // null until first fetch resolves
   const [hash, navigate] = useHashRoute();
   const [pageTransition, setPageTransition] = useState(false);
+  const saveTimer = useRef(null);
+  const hydratedRef = useRef(false);
 
-  useEffect(() => { saveState(state); }, [state]);
+  // Initial hydration from server
+  useEffect(() => {
+    let cancelled = false;
+    fetchState()
+      .then(s => { if (!cancelled) { setState(s); hydratedRef.current = true; } })
+      .catch(err => {
+        console.warn("[state] hydration failed, starting empty:", err);
+        if (!cancelled) { setState(defaultState); hydratedRef.current = true; }
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Debounced server save on every state change (after hydration)
+  useEffect(() => {
+    if (!hydratedRef.current || state == null) return;
+    clearTimeout(saveTimer.current);
+    saveTimer.current = setTimeout(() => {
+      postState(state).catch(err => console.warn("[state] save failed:", err));
+    }, SAVE_DEBOUNCE_MS);
+    return () => clearTimeout(saveTimer.current);
+  }, [state]);
 
   // Page transition trigger on hash change
   useEffect(() => {
@@ -194,16 +216,26 @@ function App() {
     return () => clearTimeout(t);
   }, [hash]);
 
-  // Route guard: if no active profile, force to /profiles
-  const activeProfile = state.profiles.find(p => p.id === state.activeProfileId);
+  // Route guard (computed before early-return so hooks run in stable order)
   const route = hash.replace(/^#/, "");
+  const activeProfile = state ? state.profiles.find(p => p.id === state.activeProfileId) : null;
 
   useEffect(() => {
+    if (state == null) return;
     const needsProfile = route.startsWith("/home") || route.startsWith("/watch");
     if (needsProfile && !activeProfile) {
       navigate("#/profiles");
     }
-  }, [route, activeProfile, navigate]);
+  }, [route, activeProfile, navigate, state]);
+
+  // Loading splash while we wait for the first server response
+  if (state == null) {
+    return (
+      <div className="boot-screen">
+        <div className="loader-ring"></div>
+      </div>
+    );
+  }
 
   // Handlers
   const setActiveProfile = (id) => {
