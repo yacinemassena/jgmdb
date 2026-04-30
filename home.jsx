@@ -74,7 +74,7 @@ function HomePage({ profile, watchEvents, videos, onWatch, onSwitchProfile, onAd
       <section
         className="hero"
         style={{
-          backgroundImage: `linear-gradient(180deg, rgba(15,23,42,0.55) 0%, rgba(15,23,42,0.92) 90%), url(${featured.thumbnail})`,
+          backgroundImage: `url(${featured.thumbnail})`,
           backgroundSize: "cover",
           backgroundPosition: "center"
         }}

@@ -1217,7 +1217,11 @@ a { color: inherit; text-decoration: none; }
   .brand-header { padding: 18px 20px; }
   .header-inner { padding: 14px 20px; gap: 12px; }
   .home-nav { display: none; }
-  .hero { padding: 0 20px 60px; height: 480px; }
+  .hero { padding: 0 20px 40px; height: 560px; background-position: center top; }
+  .hero-overlay {
+    background:
+      linear-gradient(to top, var(--bg-0) 0%, rgba(5,8,16,0.55) 30%, rgba(5,8,16,0.05) 60%, transparent 80%);
+  }
   .row-section { padding: 32px 20px 0; }
   .welcome-strip { padding: 24px 20px; gap: 20px; }
   .welcome-stats { gap: 24px; width: 100%; justify-content: space-between; }
@@ -1253,7 +1257,7 @@ a { color: inherit; text-decoration: none; }
   .brand-name { display: none; }
   .profile-avatar { width: 84px; height: 84px; }
   .profile-initials { font-size: 26px; }
-  .hero { height: 420px; padding-bottom: 40px; }
+  .hero { height: 520px; padding-bottom: 32px; }
   .hero-eyebrow { font-size: 10px; }
   .hero-actions { gap: 12px; }
   .hero-progress-info { width: 100%; }
