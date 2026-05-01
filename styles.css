@@ -962,11 +962,16 @@ a { color: inherit; text-decoration: none; }
   width: 100%;
   background: #000;
   flex: 0 0 auto;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 .vimeo-wrap {
   position: relative;
   aspect-ratio: 16 / 9;
-  width: 100%;
+  width: min(100%, calc((100svh - 0px) * 16 / 9));
+  max-height: 100svh;
+  margin: 0 auto;
 }
 .vimeo-wrap iframe,
 .vimeo-wrap video { position: absolute; inset: 0; width: 100%; height: 100%; border: none; background: #000; }

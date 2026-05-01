@@ -204,9 +204,6 @@ function AdminView({ profiles, watchEvents, videos, onBack }) {
           )}
         </div>
 
-        <div className="admin-footnote">
-          Les données sont stockées localement dans ce navigateur. Pour un suivi multi-appareils, il faudra brancher un petit backend (par exemple un Worker Cloudflare avec KV/D1).
-        </div>
       </main>
     </div>
   );
