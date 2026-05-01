@@ -16,7 +16,7 @@ const R2_BASE = "https://pub-f7a0c015c98f48b0b6b872c167a332f9.r2.dev";
 const VIDEOS = [
   {
     id: "v1",
-    title: "Roadmap & Démarrage — Sa Première OP",
+    title: "Négociation",
     category: "Démarrage",
     durationSeconds: 2959,
     description: "Sa toute première opération expliquée pas à pas, puis les fondamentaux de la négociation : processus en sept étapes, dix qualités du bon négociateur, comment négocier son split de rémunération et un investisseur. Du tactique pur, prêt à appliquer dès lundi matin.",
@@ -28,7 +28,7 @@ const VIDEOS = [
   },
   {
     id: "v2",
-    title: "Mindset & Scaling",
+    title: "Mindset",
     category: "Mindset",
     durationSeconds: 5665,
     description: "Le parcours de zéro à plus de 100M$ de profits raconté en huit histoires concrètes, avec les shifts de mindset à chaque étape. Les dix lois du succès empruntées à Jim Rohn, et pourquoi la majorité ne passe jamais à l'action.",
@@ -48,7 +48,8 @@ const VIDEOS = [
     thumbnail: `${R2_BASE}/thumbnails/game-plan.jpg`,
     videoUrl: `${R2_BASE}/videos/game-plan.mp4`,
     poster: "linear-gradient(135deg, #422006 0%, #0f172a 100%)",
-    accent: "#CA8A04"
+    accent: "#CA8A04",
+    hidden: true
   },
   {
     id: "v4",
@@ -60,9 +61,12 @@ const VIDEOS = [
     thumbnail: `${R2_BASE}/thumbnails/lever-des-millions.jpg`,
     videoUrl: `${R2_BASE}/videos/lever-des-millions.mp4`,
     poster: "linear-gradient(135deg, #831843 0%, #0f172a 100%)",
-    accent: "#EC4899"
+    accent: "#EC4899",
+    hidden: true
   }
 ];
+
+const VISIBLE_VIDEOS = VIDEOS.filter(v => !v.hidden);
 
 // ── Avatar palette ───────────────────────────────────────────────────────────
 const AVATAR_COLORS = [
@@ -151,8 +155,54 @@ function useHashRoute() {
   return [hash, navigate];
 }
 
+// ── Access gate ──────────────────────────────────────────────────────────────
+const ACCESS_PASSWORD = "nour";
+const ACCESS_KEY = "jgmdb-access-ok";
+
+function PasswordGate({ onUnlock }) {
+  const [value, setValue] = useState("");
+  const [error, setError] = useState(false);
+
+  const submit = (e) => {
+    e?.preventDefault();
+    if (value.trim().toLowerCase() === ACCESS_PASSWORD) {
+      try { sessionStorage.setItem(ACCESS_KEY, "1"); } catch {}
+      onUnlock();
+    } else {
+      setError(true);
+    }
+  };
+
+  return (
+    <div className="gate-page">
+      <main className="gate-main">
+        <form className="gate-form" onSubmit={submit}>
+          <h1 className="gate-title">Accès protégé</h1>
+          <input
+            className={`field-input ${error ? "error" : ""}`}
+            type="password"
+            value={value}
+            onChange={e => { setValue(e.target.value); if (error) setError(false); }}
+            placeholder="Mot de passe"
+            autoFocus
+            autoComplete="off"
+          />
+          {error && <span className="field-error">Mot de passe incorrect</span>}
+          <button type="submit" className="primary-btn" disabled={!value.trim()}>
+            Entrer
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
+          </button>
+        </form>
+      </main>
+    </div>
+  );
+}
+
 // ── Root App ─────────────────────────────────────────────────────────────────
 function App() {
+  const [unlocked, setUnlocked] = useState(() => {
+    try { return sessionStorage.getItem(ACCESS_KEY) === "1"; } catch { return false; }
+  });
   const [state, setState] = useState(null); // null until first fetch resolves
   const [hash, navigate] = useHashRoute();
   const [pageTransition, setPageTransition] = useState(false);
@@ -199,6 +249,11 @@ function App() {
       navigate("#/profiles");
     }
   }, [route, activeProfile, navigate, state]);
+
+  // Password gate before anything else
+  if (!unlocked) {
+    return <PasswordGate onUnlock={() => setUnlocked(true)} />;
+  }
 
   // Loading splash while we wait for the first server response
   if (state == null) {
@@ -279,12 +334,12 @@ function App() {
     page = <ProfilePicker profiles={state.profiles} onSelect={setActiveProfile} onAdd={() => navigate("#/profiles/new")} onEdit={() => navigate("#/profiles/edit")} />;
   } else if (route.startsWith("/watch/")) {
     const videoId = route.replace("/watch/", "");
-    const video = VIDEOS.find(v => v.id === videoId);
+    const video = VISIBLE_VIDEOS.find(v => v.id === videoId);
     page = video ? <VideoPlayer video={video} profile={activeProfile} watchEvents={state.watchEvents} onRecord={recordWatch} onBack={() => navigate("#/home")} /> : <NotFound onBack={() => navigate("#/home")} />;
   } else if (route.startsWith("/admin")) {
-    page = <AdminView profiles={state.profiles} watchEvents={state.watchEvents} videos={VIDEOS} onBack={() => navigate(activeProfile ? "#/home" : "#/profiles")} />;
+    page = <AdminView profiles={state.profiles} watchEvents={state.watchEvents} videos={VISIBLE_VIDEOS} onBack={() => navigate(activeProfile ? "#/home" : "#/profiles")} />;
   } else if (route.startsWith("/home")) {
-    page = <HomePage profile={activeProfile} watchEvents={state.watchEvents} videos={VIDEOS} onWatch={(id) => navigate(`#/watch/${id}`)} onSwitchProfile={switchProfile} onAdmin={() => navigate("#/admin")} />;
+    page = <HomePage profile={activeProfile} watchEvents={state.watchEvents} videos={VISIBLE_VIDEOS} onWatch={(id) => navigate(`#/watch/${id}`)} onSwitchProfile={switchProfile} onAdmin={() => navigate("#/admin")} />;
   } else {
     page = <NotFound onBack={() => navigate("#/profiles")} />;
   }
@@ -303,5 +358,5 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App />);
 
 // Expose to window for cross-script access
 Object.assign(window, {
-  VIDEOS, AVATAR_COLORS, getInitials, formatTime, formatDuration, formatDurationShort, TWEAKS
+  VIDEOS, VISIBLE_VIDEOS, AVATAR_COLORS, getInitials, formatTime, formatDuration, formatDurationShort, TWEAKS
 });
