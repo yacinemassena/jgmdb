@@ -14,14 +14,6 @@ function HomePage({ profile, watchEvents, videos, onWatch, onSwitchProfile, onAd
   }, []);
 
   const myEvents = watchEvents.filter(e => e.profileId === profile?.id);
-  const inProgress = myEvents
-    .filter(e => !e.completed && e.progress > 0.02)
-    .sort((a, b) => b.lastSeenAt - a.lastSeenAt);
-
-  const inProgressVideos = inProgress
-    .map(e => ({ video: videos.find(v => v.id === e.videoId), event: e }))
-    .filter(x => x.video);
-
   const completed = myEvents.filter(e => e.completed).length;
   const totalMinutes = myEvents.reduce((acc, e) => acc + Math.round(e.watchedSeconds / 60), 0);
 
@@ -132,30 +124,6 @@ function HomePage({ profile, watchEvents, videos, onWatch, onSwitchProfile, onAd
           </div>
         </div>
       </section>
-
-      {/* Continue Watching */}
-      {inProgressVideos.length > 0 && (
-        <section className="row-section">
-          <div className="row-header">
-            <h2 className="row-title">Reprendre</h2>
-            <span className="row-meta">{inProgressVideos.length} en cours</span>
-          </div>
-          <div className="card-row">
-            {inProgressVideos.map(({ video, event }) => (
-              <VideoCard
-                key={video.id}
-                video={video}
-                event={event}
-                onClick={() => onWatch(video.id)}
-                hovered={hoveredId === video.id}
-                onHoverStart={() => setHoveredId(video.id)}
-                onHoverEnd={() => setHoveredId(null)}
-                variant="continue"
-              />
-            ))}
-          </div>
-        </section>
-      )}
 
       {/* All modules */}
       <section className="row-section">
