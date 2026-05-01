@@ -14,10 +14,6 @@ function ProfilePicker({ profiles, onSelect, onAdd, onEdit }) {
     <div className="picker-page">
       <header className="brand-header">
         <div className="brand-mark"></div>
-        <button className="text-btn" onClick={() => window.location.hash = "#/admin"}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg>
-          Statistiques
-        </button>
       </header>
 
       <main className="picker-main">
@@ -165,9 +161,7 @@ function CreateProfile({ onSave, onCancel }) {
 // =============================================================================
 // Edit Profiles
 // =============================================================================
-function EditProfiles({ profiles, onUpdate, onDelete, onDone }) {
-  const [confirmDelete, setConfirmDelete] = useState(null);
-
+function EditProfiles({ profiles, onUpdate, onDone }) {
   return (
     <div className="edit-page">
       <header className="brand-header">
@@ -176,7 +170,7 @@ function EditProfiles({ profiles, onUpdate, onDelete, onDone }) {
 
       <main className="edit-main">
         <h1 className="edit-title">Gérer les profils</h1>
-        <p className="edit-subtitle">Modifiez les noms ou supprimez les profils dont vous n'avez plus besoin.</p>
+        <p className="edit-subtitle">Modifiez les noms et rôles de vos profils.</p>
 
         <div className="edit-list">
           {profiles.map(p => {
@@ -199,18 +193,6 @@ function EditProfiles({ profiles, onUpdate, onDelete, onDone }) {
                     onChange={e => onUpdate(p.id, { role: e.target.value })}
                     placeholder="Rôle (optionnel)"
                   />
-                </div>
-                <div className="edit-row-actions">
-                  {confirmDelete === p.id ? (
-                    <>
-                      <button className="danger-btn-sm" onClick={() => { onDelete(p.id); setConfirmDelete(null); }}>Confirmer</button>
-                      <button className="ghost-btn-sm" onClick={() => setConfirmDelete(null)}>Annuler</button>
-                    </>
-                  ) : (
-                    <button className="icon-btn" onClick={() => setConfirmDelete(p.id)} aria-label="Supprimer le profil">
-                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
-                    </button>
-                  )}
                 </div>
               </div>
             );

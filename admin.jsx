@@ -1,9 +1,61 @@
 // =============================================================================
-// Admin / Analytics view — table of who watched what
+// Admin panel — stats + management (videos, profiles, password, CSV export)
 // =============================================================================
 
-function AdminView({ profiles, watchEvents, videos, onBack }) {
+function csvEscape(cell) {
+  const s = String(cell ?? "");
+  if (/[",\n\r]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+  return s;
+}
+
+function downloadStatsCsv(profiles, watchEvents, videos) {
+  const header = ["profil", "role", "module", "titre", "demarre_le", "vu_le", "secondes_visionnees", "progression_pct", "termine"];
+  const rows = watchEvents.map(e => {
+    const p = profiles.find(x => x.id === e.profileId);
+    const v = videos.find(x => x.id === e.videoId);
+    if (!p || !v) return null;
+    return [
+      p.name,
+      p.role || "",
+      v.chapter,
+      v.title,
+      e.startedAt ? new Date(e.startedAt).toISOString() : "",
+      e.lastSeenAt ? new Date(e.lastSeenAt).toISOString() : "",
+      Math.round(e.watchedSeconds || 0),
+      Math.round((e.progress || 0) * 100),
+      e.completed ? "1" : "0"
+    ];
+  }).filter(Boolean);
+
+  const csv = [header, ...rows].map(r => r.map(csvEscape).join(",")).join("\n");
+  const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `jgmdb-stats-${new Date().toISOString().slice(0, 10)}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+}
+
+function AdminView({
+  profiles,
+  watchEvents,
+  videos,
+  currentPassword,
+  onUpdateVideo,
+  onUpdateProfile,
+  onDeleteProfile,
+  onUpdatePassword,
+  onBack
+}) {
   const [selectedProfile, setSelectedProfile] = useState("all");
+  const [confirmDelete, setConfirmDelete] = useState(null);
+  const [pwdDraft, setPwdDraft] = useState(currentPassword || "");
+  const [pwdSaved, setPwdSaved] = useState(false);
+
+  useEffect(() => { setPwdDraft(currentPassword || ""); }, [currentPassword]);
 
   const totalWatchTime = watchEvents.reduce((acc, e) => acc + (e.watchedSeconds || 0), 0);
   const totalCompletions = watchEvents.filter(e => e.completed).length;
@@ -12,10 +64,8 @@ function AdminView({ profiles, watchEvents, videos, onBack }) {
   const filtered = selectedProfile === "all"
     ? watchEvents
     : watchEvents.filter(e => e.profileId === selectedProfile);
-
   const sorted = [...filtered].sort((a, b) => b.lastSeenAt - a.lastSeenAt);
 
-  // Per-profile completion grid
   const completionMatrix = profiles.map(p => ({
     profile: p,
     videos: videos.map(v => {
@@ -24,24 +74,38 @@ function AdminView({ profiles, watchEvents, videos, onBack }) {
     })
   }));
 
+  const savePassword = () => {
+    const v = pwdDraft.trim();
+    if (!v) return;
+    onUpdatePassword(v);
+    setPwdSaved(true);
+    setTimeout(() => setPwdSaved(false), 1800);
+  };
+
   return (
     <div className="admin-page">
       <header className="admin-header">
         <div className="admin-header-inner">
           <div className="brand-mark">
-            <span className="admin-tag">Statistiques</span>
+            <span className="admin-tag">Admin</span>
           </div>
-          <button className="ghost-btn" onClick={onBack}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
-            Retour
-          </button>
+          <div className="admin-header-actions">
+            <button className="ghost-btn" onClick={() => downloadStatsCsv(profiles, watchEvents, videos)}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5 5 5-5"/><path d="M12 15V3"/></svg>
+              Exporter CSV
+            </button>
+            <button className="ghost-btn" onClick={onBack}>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+              Bibliothèque
+            </button>
+          </div>
         </div>
       </header>
 
       <main className="admin-main">
         <div className="admin-intro">
-          <h1>Statistiques</h1>
-          <p>Activité et taux de complétion par profil. Mis à jour en temps réel.</p>
+          <h1>Panneau admin</h1>
+          <p>Statistiques, gestion du contenu et des profils.</p>
         </div>
 
         <div className="kpi-row">
@@ -202,6 +266,109 @@ function AdminView({ profiles, watchEvents, videos, onBack }) {
               </table>
             </div>
           )}
+        </div>
+
+        {/* Manage videos */}
+        <div className="admin-section">
+          <div className="admin-section-header">
+            <h2>Vidéos</h2>
+            <span>Renommer / afficher / masquer</span>
+          </div>
+          <div className="manage-list">
+            {videos.map(v => (
+              <div key={v.id} className="manage-row">
+                <div className="manage-meta">
+                  <span className="manage-chapter">{v.chapter}</span>
+                  <span className="manage-cat" style={{ color: v.accent }}>{v.category}</span>
+                </div>
+                <input
+                  className="field-input"
+                  value={v.title}
+                  onChange={e => onUpdateVideo(v.id, { title: e.target.value })}
+                  placeholder="Titre"
+                />
+                <button
+                  className={v.hidden ? "ghost-btn-sm" : "danger-btn-sm"}
+                  onClick={() => onUpdateVideo(v.id, { hidden: !v.hidden })}
+                >
+                  {v.hidden ? "Afficher" : "Masquer"}
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Manage profiles */}
+        <div className="admin-section">
+          <div className="admin-section-header">
+            <h2>Profils</h2>
+            <span>Renommer / supprimer</span>
+          </div>
+          {profiles.length === 0 ? (
+            <div className="empty-state">
+              <span className="empty-icon">○</span>
+              <h3>Aucun profil</h3>
+              <p>Les profils créés apparaîtront ici.</p>
+            </div>
+          ) : (
+            <div className="manage-list">
+              {profiles.map(p => {
+                const color = AVATAR_COLORS[p.avatarIndex % AVATAR_COLORS.length];
+                return (
+                  <div key={p.id} className="manage-row">
+                    <div className="manage-avatar" style={{ background: color.bg }}>{getInitials(p.name)}</div>
+                    <input
+                      className="field-input"
+                      value={p.name}
+                      onChange={e => onUpdateProfile(p.id, { name: e.target.value })}
+                      placeholder="Nom"
+                    />
+                    <input
+                      className="field-input subtle"
+                      value={p.role || ""}
+                      onChange={e => onUpdateProfile(p.id, { role: e.target.value })}
+                      placeholder="Rôle"
+                    />
+                    {confirmDelete === p.id ? (
+                      <div className="manage-confirm">
+                        <button className="danger-btn-sm" onClick={() => { onDeleteProfile(p.id); setConfirmDelete(null); }}>Confirmer</button>
+                        <button className="ghost-btn-sm" onClick={() => setConfirmDelete(null)}>Annuler</button>
+                      </div>
+                    ) : (
+                      <button className="icon-btn" onClick={() => setConfirmDelete(p.id)} aria-label="Supprimer le profil">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        {/* Change access password */}
+        <div className="admin-section">
+          <div className="admin-section-header">
+            <h2>Mot de passe d'accès</h2>
+            <span>Page d'entrée</span>
+          </div>
+          <div className="manage-row pwd-row">
+            <input
+              className="field-input"
+              type="text"
+              value={pwdDraft}
+              onChange={e => { setPwdDraft(e.target.value); setPwdSaved(false); }}
+              placeholder="Nouveau mot de passe"
+            />
+            <button
+              className="primary-btn"
+              onClick={savePassword}
+              disabled={!pwdDraft.trim() || pwdDraft.trim() === (currentPassword || "").trim()}
+            >
+              {pwdSaved ? "Enregistré ✓" : "Enregistrer"}
+            </button>
+          </div>
+          <p className="pwd-hint">Le mot de passe admin est séparé et n'est pas modifiable ici.</p>
         </div>
 
       </main>

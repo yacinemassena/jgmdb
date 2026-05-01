@@ -2,7 +2,7 @@
 // Home page — library of training videos
 // =============================================================================
 
-function HomePage({ profile, watchEvents, videos, onWatch, onSwitchProfile, onAdmin }) {
+function HomePage({ profile, watchEvents, videos, onWatch, onSwitchProfile }) {
   const [scrolled, setScrolled] = useState(false);
   const [hoveredId, setHoveredId] = useState(null);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -48,10 +48,6 @@ function HomePage({ profile, watchEvents, videos, onWatch, onSwitchProfile, onAd
                     {profile?.role && <div className="menu-role">{profile.role}</div>}
                   </div>
                 </div>
-                <button className="menu-item" onClick={() => { setMenuOpen(false); onAdmin(); }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 4 4 5-5"/></svg>
-                  Statistiques
-                </button>
                 <button className="menu-item" onClick={() => { setMenuOpen(false); onSwitchProfile(); }}>
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 11l-3-3m0 0l3-3m-3 3h6"/></svg>
                   Changer de profil
@@ -150,13 +146,7 @@ function HomePage({ profile, watchEvents, videos, onWatch, onSwitchProfile, onAd
         </div>
       </section>
 
-      <footer className="home-footer">
-        <div className="footer-inner">
-          <div className="footer-meta">
-            <a href="#" onClick={(e) => { e.preventDefault(); onAdmin(); }}>Admin</a>
-          </div>
-        </div>
-      </footer>
+      <footer className="home-footer"></footer>
     </div>
   );
 }

@@ -517,6 +517,20 @@ a { color: inherit; text-decoration: none; }
   text-align: center;
 }
 .gate-form .primary-btn { width: 100%; padding-top: 14px; padding-bottom: 14px; }
+.gate-admin-link {
+  position: fixed;
+  bottom: 14px;
+  right: 16px;
+  font-size: 9px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--text-subtle);
+  opacity: 0.55;
+  padding: 4px 6px;
+  border-radius: 3px;
+  transition: color 0.2s, opacity 0.2s, background 0.2s;
+}
+.gate-admin-link:hover { color: var(--text-muted); opacity: 1; background: rgba(148,163,184,0.05); }
 
 /* =============================================================================
    Edit profiles
@@ -1252,6 +1266,53 @@ a { color: inherit; text-decoration: none; }
 
 .admin-footnote { margin-top: 32px; padding: 16px 20px; background: rgba(37, 99, 235, 0.05); border: 1px solid rgba(37, 99, 235, 0.2); border-radius: 6px; font-size: 12px; color: var(--text-muted); }
 .admin-footnote code { font-family: var(--mono); padding: 1px 6px; background: rgba(148,163,184,0.1); border-radius: 3px; color: var(--text); font-size: 11px; }
+
+/* Admin — header actions */
+.admin-header-actions { display: flex; gap: 10px; align-items: center; }
+
+/* Admin — manage rows (videos, profiles, password) */
+.manage-list { display: flex; flex-direction: column; gap: 10px; }
+.manage-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+.manage-row .field-input { flex: 1; min-width: 0; padding: 10px 12px; font-size: 14px; }
+.manage-row .field-input.subtle { max-width: 200px; color: var(--text-muted); }
+.manage-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 110px;
+}
+.manage-chapter { font-size: 11px; color: var(--text-muted); letter-spacing: 0.08em; text-transform: uppercase; font-weight: 600; }
+.manage-cat { font-size: 11px; letter-spacing: 0.04em; }
+.manage-avatar {
+  flex-shrink: 0;
+  width: 40px; height: 40px;
+  border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-family: var(--serif);
+  font-size: 14px;
+  font-weight: 500;
+  color: white;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+}
+.manage-confirm { display: flex; gap: 6px; }
+.pwd-row { padding: 14px; }
+.pwd-row .primary-btn { flex-shrink: 0; padding: 10px 18px; }
+.pwd-hint { font-size: 12px; color: var(--text-subtle); margin: 8px 0 0; }
+
+@media (max-width: 720px) {
+  .manage-row { flex-wrap: wrap; gap: 10px; }
+  .manage-row .field-input.subtle { max-width: 100%; }
+  .admin-header-actions { gap: 6px; }
+  .admin-header-actions .ghost-btn { padding: 10px 14px; font-size: 12px; }
+}
 
 .notfound-page { min-height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 24px; }
 .notfound-page h1 { font-family: var(--serif); font-weight: 400; margin: 0; }

@@ -66,8 +66,6 @@ const VIDEOS = [
   }
 ];
 
-const VISIBLE_VIDEOS = VIDEOS.filter(v => !v.hidden);
-
 // ── Avatar palette ───────────────────────────────────────────────────────────
 const AVATAR_COLORS = [
   { bg: "linear-gradient(135deg, #1e40af 0%, #3b82f6 100%)", solid: "#3B82F6" },
@@ -88,8 +86,17 @@ const defaultState = {
   profiles: [],
   activeProfileId: null,
   // watchEvents: [{profileId, videoId, startedAt, lastSeenAt, progress, completed, watchedSeconds}]
-  watchEvents: []
+  watchEvents: [],
+  // Admin-editable settings (persisted server-side)
+  accessPassword: "nour",
+  // videoOverrides: { [videoId]: { title?, hidden? } } — admin edits without losing source data
+  videoOverrides: {}
 };
+
+function mergeVideos(videos, overrides) {
+  const o = overrides || {};
+  return videos.map(v => ({ ...v, ...(o[v.id] || {}) }));
+}
 
 async function fetchState() {
   const r = await fetch(STATE_URL, { cache: "no-store" });
@@ -156,28 +163,44 @@ function useHashRoute() {
 }
 
 // ── Access gate ──────────────────────────────────────────────────────────────
-const ACCESS_PASSWORD = "nour";
 const ACCESS_KEY = "jgmdb-access-ok";
+const ADMIN_KEY = "jgmdb-admin-ok";
+const ADMIN_PASSWORD = "nourjamo"; // hardcoded admin pass — not user-editable
 
-function PasswordGate({ onUnlock }) {
+function PasswordGate({ userPassword, onUnlock, onAdminUnlock }) {
+  const [mode, setMode] = useState("user"); // "user" | "admin"
   const [value, setValue] = useState("");
   const [error, setError] = useState(false);
 
+  useEffect(() => { setValue(""); setError(false); }, [mode]);
+
   const submit = (e) => {
     e?.preventDefault();
-    if (value.trim().toLowerCase() === ACCESS_PASSWORD) {
+    const v = value.trim().toLowerCase();
+    const target = mode === "admin"
+      ? ADMIN_PASSWORD
+      : (userPassword || "nour").toLowerCase();
+    if (!v) return;
+    if (v === target) {
       try { sessionStorage.setItem(ACCESS_KEY, "1"); } catch {}
-      onUnlock();
+      if (mode === "admin") {
+        try { sessionStorage.setItem(ADMIN_KEY, "1"); } catch {}
+        onAdminUnlock();
+      } else {
+        onUnlock();
+      }
     } else {
       setError(true);
     }
   };
 
+  const isAdmin = mode === "admin";
+
   return (
     <div className="gate-page">
       <main className="gate-main">
         <form className="gate-form" onSubmit={submit}>
-          <h1 className="gate-title">Accès protégé</h1>
+          <h1 className="gate-title">{isAdmin ? "Accès admin" : "Accès protégé"}</h1>
           <input
             className={`field-input ${error ? "error" : ""}`}
             type="password"
@@ -194,6 +217,13 @@ function PasswordGate({ onUnlock }) {
           </button>
         </form>
       </main>
+      <button
+        type="button"
+        className="gate-admin-link"
+        onClick={() => setMode(m => m === "admin" ? "user" : "admin")}
+      >
+        {isAdmin ? "← Accès utilisateur" : "Accès admin →"}
+      </button>
     </div>
   );
 }
@@ -202,6 +232,9 @@ function PasswordGate({ onUnlock }) {
 function App() {
   const [unlocked, setUnlocked] = useState(() => {
     try { return sessionStorage.getItem(ACCESS_KEY) === "1"; } catch { return false; }
+  });
+  const [adminMode, setAdminMode] = useState(() => {
+    try { return sessionStorage.getItem(ADMIN_KEY) === "1"; } catch { return false; }
   });
   const [state, setState] = useState(null); // null until first fetch resolves
   const [hash, navigate] = useHashRoute();
@@ -248,12 +281,10 @@ function App() {
     if (needsProfile && !activeProfile) {
       navigate("#/profiles");
     }
-  }, [route, activeProfile, navigate, state]);
-
-  // Password gate before anything else
-  if (!unlocked) {
-    return <PasswordGate onUnlock={() => setUnlocked(true)} />;
-  }
+    if (route.startsWith("/admin") && !adminMode) {
+      navigate(activeProfile ? "#/home" : "#/profiles");
+    }
+  }, [route, activeProfile, adminMode, navigate, state]);
 
   // Loading splash while we wait for the first server response
   if (state == null) {
@@ -261,6 +292,17 @@ function App() {
       <div className="boot-screen">
         <div className="loader-ring"></div>
       </div>
+    );
+  }
+
+  // Password gate (uses persisted user password from state)
+  if (!unlocked) {
+    return (
+      <PasswordGate
+        userPassword={state.accessPassword || "nour"}
+        onUnlock={() => setUnlocked(true)}
+        onAdminUnlock={() => { setUnlocked(true); setAdminMode(true); navigate("#/admin"); }}
+      />
     );
   }
 
@@ -324,22 +366,54 @@ function App() {
     navigate("#/profiles");
   };
 
+  const updateVideoOverride = (videoId, patch) => {
+    setState(s => ({
+      ...s,
+      videoOverrides: {
+        ...(s.videoOverrides || {}),
+        [videoId]: { ...((s.videoOverrides || {})[videoId] || {}), ...patch }
+      }
+    }));
+  };
+
+  const updateAccessPassword = (newPwd) => {
+    const trimmed = (newPwd || "").trim();
+    if (!trimmed) return;
+    setState(s => ({ ...s, accessPassword: trimmed }));
+  };
+
+  // Merged video catalog = source + admin overrides
+  const allVideos = mergeVideos(VIDEOS, state.videoOverrides);
+  const visibleVideos = allVideos.filter(v => !v.hidden);
+
   // Route resolution
   let page;
   if (route.startsWith("/profiles/new")) {
     page = <CreateProfile onSave={(p) => { addProfile(p); navigate("#/profiles"); }} onCancel={() => navigate("#/profiles")} />;
   } else if (route.startsWith("/profiles/edit")) {
-    page = <EditProfiles profiles={state.profiles} onUpdate={updateProfile} onDelete={deleteProfile} onDone={() => navigate("#/profiles")} />;
+    page = <EditProfiles profiles={state.profiles} onUpdate={updateProfile} onDone={() => navigate("#/profiles")} />;
   } else if (route.startsWith("/profiles") || route === "" || route === "/") {
     page = <ProfilePicker profiles={state.profiles} onSelect={setActiveProfile} onAdd={() => navigate("#/profiles/new")} onEdit={() => navigate("#/profiles/edit")} />;
   } else if (route.startsWith("/watch/")) {
     const videoId = route.replace("/watch/", "");
-    const video = VISIBLE_VIDEOS.find(v => v.id === videoId);
+    const video = visibleVideos.find(v => v.id === videoId);
     page = video ? <VideoPlayer video={video} profile={activeProfile} watchEvents={state.watchEvents} onRecord={recordWatch} onBack={() => navigate("#/home")} /> : <NotFound onBack={() => navigate("#/home")} />;
   } else if (route.startsWith("/admin")) {
-    page = <AdminView profiles={state.profiles} watchEvents={state.watchEvents} videos={VISIBLE_VIDEOS} onBack={() => navigate(activeProfile ? "#/home" : "#/profiles")} />;
+    page = adminMode ? (
+      <AdminView
+        profiles={state.profiles}
+        watchEvents={state.watchEvents}
+        videos={allVideos}
+        currentPassword={state.accessPassword || "nour"}
+        onUpdateVideo={updateVideoOverride}
+        onUpdateProfile={updateProfile}
+        onDeleteProfile={deleteProfile}
+        onUpdatePassword={updateAccessPassword}
+        onBack={() => navigate(activeProfile ? "#/home" : "#/profiles")}
+      />
+    ) : null;
   } else if (route.startsWith("/home")) {
-    page = <HomePage profile={activeProfile} watchEvents={state.watchEvents} videos={VISIBLE_VIDEOS} onWatch={(id) => navigate(`#/watch/${id}`)} onSwitchProfile={switchProfile} onAdmin={() => navigate("#/admin")} />;
+    page = <HomePage profile={activeProfile} watchEvents={state.watchEvents} videos={visibleVideos} onWatch={(id) => navigate(`#/watch/${id}`)} onSwitchProfile={switchProfile} />;
   } else {
     page = <NotFound onBack={() => navigate("#/profiles")} />;
   }
@@ -358,5 +432,5 @@ ReactDOM.createRoot(document.getElementById("root")).render(<App />);
 
 // Expose to window for cross-script access
 Object.assign(window, {
-  VIDEOS, VISIBLE_VIDEOS, AVATAR_COLORS, getInitials, formatTime, formatDuration, formatDurationShort, TWEAKS
+  VIDEOS, AVATAR_COLORS, getInitials, formatTime, formatDuration, formatDurationShort, TWEAKS
 });
