@@ -28,6 +28,13 @@ function VideoPlayer({ video, profile, watchEvents, onRecord, onBack }) {
       if (initialSeconds > 0 && initialSeconds < totalSeconds - 5) {
         try { v.currentTime = initialSeconds; } catch {}
       }
+      // Autoplay after the click that navigated here. Some browsers
+      // (mobile Safari, strict desktop) may still reject — fall back to
+      // muted playback rather than nothing.
+      v.play().catch(() => {
+        v.muted = true;
+        v.play().catch(() => {});
+      });
     };
     const onTime = () => {
       const seconds = v.currentTime;
