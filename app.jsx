@@ -11,17 +11,18 @@ const TWEAKS = /*EDITMODE-BEGIN*/{
 }/*EDITMODE-END*/;
 
 // ── Video catalog ────────────────────────────────────────────────────────────
+const R2_BASE = "https://pub-f7a0c015c98f48b0b6b872c167a332f9.r2.dev";
+
 const VIDEOS = [
   {
     id: "v1",
-    title: "Roadmap & Démarrage",
-    category: "Stratégie",
-    durationSeconds: 11568,
-    description: "Les fondations pour démarrer comme marchand de biens. Pourquoi la méthode prime sur le talent : s'entourer de profils complémentaires, identifier ses forces, trouver son white space marketing, et accepter l'échec comme étape normale du parcours.",
+    title: "Roadmap & Démarrage — Sa Première OP",
+    category: "Démarrage",
+    durationSeconds: 2959,
+    description: "Sa toute première opération expliquée pas à pas, puis les fondamentaux de la négociation : processus en sept étapes, dix qualités du bon négociateur, comment négocier son split de rémunération et un investisseur. Du tactique pur, prêt à appliquer dès lundi matin.",
     chapter: "Module 01",
-    vimeoId: "1188097028",
-    vimeoHash: "6d3a59dbeb",
-    thumbnail: "thumbnails/Roadmap_Demarrage_Marchand_de_Biens.jpg",
+    thumbnail: `${R2_BASE}/thumbnails/roadmap.jpg`,
+    videoUrl: `${R2_BASE}/videos/roadmap.mp4`,
     poster: "linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%)",
     accent: "#3B82F6"
   },
@@ -29,66 +30,37 @@ const VIDEOS = [
     id: "v2",
     title: "Mindset & Scaling",
     category: "Mindset",
-    durationSeconds: 10387,
-    description: "Le profil du marchand de biens performant : chasseur, dealmaker, négociateur, opérateur, créateur de valeur, structureur. Études de cas vécues et leviers concrets pour scaler son activité.",
+    durationSeconds: 5665,
+    description: "Le parcours de zéro à plus de 100M$ de profits raconté en huit histoires concrètes, avec les shifts de mindset à chaque étape. Les dix lois du succès empruntées à Jim Rohn, et pourquoi la majorité ne passe jamais à l'action.",
     chapter: "Module 02",
-    vimeoId: "1188092005",
-    vimeoHash: "e8d84a9afe",
-    thumbnail: "thumbnails/Mindset_et_Scaling_Marchand_de_Biens.jpg",
+    thumbnail: `${R2_BASE}/thumbnails/mindset-scaling.jpg`,
+    videoUrl: `${R2_BASE}/videos/mindset-scaling.mp4`,
     poster: "linear-gradient(135deg, #134e4a 0%, #0f172a 100%)",
     accent: "#14B8A6"
   },
   {
     id: "v3",
-    title: "Femmes Marchandes de Biens",
-    category: "Roundtable",
-    durationSeconds: 5596,
-    description: "Roundtable avec trois marchandes de biens : parcours, plafond de verre vs « plancher collant », réseau, mentorat — et comment s'imposer dans un secteur historiquement masculin.",
+    title: "(Un des) Game Plan pour devenir multimillionnaire",
+    category: "Stratégie",
+    durationSeconds: 7012,
+    description: "Conférence BIFF Versailles 2025 : un game plan complet pour aller chercher un patrimoine multimillionnaire. Trois leviers concrets, et la mentalité à adopter pour traiter ses problèmes en devenant riche plutôt qu'en attendant que ça passe.",
     chapter: "Module 03",
-    vimeoId: "1188090539",
-    vimeoHash: "e527cc4135",
-    thumbnail: "thumbnails/Femmes_Marchandes_de_Biens.jpg",
-    poster: "linear-gradient(135deg, #831843 0%, #0f172a 100%)",
-    accent: "#EC4899"
+    thumbnail: `${R2_BASE}/thumbnails/game-plan.jpg`,
+    videoUrl: `${R2_BASE}/videos/game-plan.mp4`,
+    poster: "linear-gradient(135deg, #422006 0%, #0f172a 100%)",
+    accent: "#CA8A04"
   },
   {
     id: "v4",
-    title: "Opération Palace — Aix-les-Bains",
-    category: "Étude de cas",
-    durationSeconds: 8255,
-    description: "Décryptage live d'une opération en cours : deux plateaux d'un ancien palace au centre d'Aix-les-Bains, divisés en 14 appartements. Montage, présentation aux banquiers et investisseurs, pré-commercialisation, rénovation second œuvre.",
+    title: "Inside la Machine à Lever des Millions",
+    category: "Levée de fonds",
+    durationSeconds: 7501,
+    description: "Session VIP du BIFF 2025 : ce qu'il a appris en levant +200M$ et en visant 500M$. Méthode pour lever sans réseau ni expérience, ce qui fait dire oui (et ce qui tue le deal), comment construire une offre claire et crédible, et un plan d'action pour pitcher dès lundi.",
     chapter: "Module 04",
-    vimeoId: "1188094841",
-    vimeoHash: "59ded8f8bf",
-    thumbnail: "thumbnails/Operation_Palace_Aix-les-Bains.jpg",
-    poster: "linear-gradient(135deg, #581c87 0%, #0f172a 100%)",
-    accent: "#A855F7"
-  },
-  {
-    id: "v5",
-    title: "Debug d'Opérations",
-    category: "Pratique",
-    durationSeconds: 3424,
-    description: "Cas réels d'opérations passées en revue avec le comité projet. Marge, rendement, pré-commercialisation, trésorerie : les arbitrages contextuels à connaître avant de signer.",
-    chapter: "Module 05",
-    vimeoId: "1188089654",
-    vimeoHash: "8daf33a8bd",
-    thumbnail: "thumbnails/Debug_Operations.jpg",
-    poster: "linear-gradient(135deg, #7c2d12 0%, #0f172a 100%)",
-    accent: "#F97316"
-  },
-  {
-    id: "v6",
-    title: "Contrôle Fiscal",
-    category: "Fiscalité",
-    durationSeconds: 6469,
-    description: "Comprendre et préparer un contrôle fiscal de marchand de biens. Procédure contradictoire vs taxation d'office, vérification de comptabilité, FEC, prescription triennale — et les bons réflexes le jour J.",
-    chapter: "Module 06",
-    vimeoId: "1188087799",
-    vimeoHash: "df6039e1eb",
-    thumbnail: "thumbnails/Controle_Fiscal.jpg",
-    poster: "linear-gradient(135deg, #14532d 0%, #0f172a 100%)",
-    accent: "#22C55E"
+    thumbnail: `${R2_BASE}/thumbnails/lever-des-millions.jpg`,
+    videoUrl: `${R2_BASE}/videos/lever-des-millions.mp4`,
+    poster: "linear-gradient(135deg, #831843 0%, #0f172a 100%)",
+    accent: "#EC4899"
   }
 ];
 

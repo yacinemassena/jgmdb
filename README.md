@@ -33,6 +33,6 @@ Includes a tiny Go static-file server (`main.go`) so Railpack/Railway can build 
 
 ## Notes
 
-- Watch progress is stored in `localStorage` on each device. No backend.
+- Watch progress is stored server-side in `state.json` via `GET/POST /api/state`. On Railway, mount a Volume at `/data` so the file persists across redeploys.
 - No authentication — anyone can claim any profile name (honor system).
-- Video sources are private Vimeo URLs configured in `app.jsx::VIDEOS`.
+- Videos and thumbnails are hosted on a public Cloudflare R2 bucket; URLs configured in `app.jsx::VIDEOS`.

@@ -1,14 +1,12 @@
 // =============================================================================
-// Video Player — Vimeo embed with real progress tracking via Vimeo Player API
+// Video Player — HTML5 <video> element streaming directly from R2
 // =============================================================================
 
 function VideoPlayer({ video, profile, watchEvents, onRecord, onBack }) {
   const [loading, setLoading] = useState(true);
   const [showControls, setShowControls] = useState(true);
-  const iframeRef = useRef(null);
+  const videoRef = useRef(null);
   const lastRecordRef = useRef(0);
-  const watchedRef = useRef(0);
-  const progressRef = useRef(0);
 
   const event = watchEvents.find(e => e.profileId === profile?.id && e.videoId === video.id);
   const totalSeconds = video.durationSeconds;
@@ -20,35 +18,33 @@ function VideoPlayer({ video, profile, watchEvents, onRecord, onBack }) {
     onRecord(video.id, { lastSeenAt: Date.now() });
   }, []);
 
-  // Vimeo Player API integration
+  // HTML5 video event wiring
   useEffect(() => {
-    if (!iframeRef.current || !window.Vimeo) {
-      // Fallback: Vimeo SDK didn't load — just hide loader after a beat
-      const t = setTimeout(() => setLoading(false), 1200);
-      return () => clearTimeout(t);
-    }
-    const player = new window.Vimeo.Player(iframeRef.current);
+    const v = videoRef.current;
+    if (!v) return;
 
-    const recordSnapshot = (force) => {
-      const now = Date.now();
-      if (!force && now - lastRecordRef.current < 5000) return;
-      lastRecordRef.current = now;
-      onRecord(video.id, {
-        watchedSeconds: watchedRef.current,
-        progress: progressRef.current,
-        completed: progressRef.current >= 0.95,
-        lastSeenAt: now
-      });
+    const onLoadedMeta = () => {
+      setLoading(false);
+      if (initialSeconds > 0 && initialSeconds < totalSeconds - 5) {
+        try { v.currentTime = initialSeconds; } catch {}
+      }
     };
-
-    const onTimeUpdate = ({ seconds, percent }) => {
-      watchedRef.current = seconds;
-      progressRef.current = percent;
+    const onTime = () => {
+      const seconds = v.currentTime;
+      const percent = totalSeconds > 0 ? Math.min(seconds / totalSeconds, 1) : 0;
       setWatchedSeconds(seconds);
-      recordSnapshot(false);
+      const now = Date.now();
+      if (now - lastRecordRef.current > 5000) {
+        lastRecordRef.current = now;
+        onRecord(video.id, {
+          watchedSeconds: seconds,
+          progress: percent,
+          completed: percent >= 0.95,
+          lastSeenAt: now
+        });
+      }
     };
     const onEnded = () => {
-      progressRef.current = 1;
       onRecord(video.id, {
         watchedSeconds: totalSeconds,
         progress: 1,
@@ -56,27 +52,28 @@ function VideoPlayer({ video, profile, watchEvents, onRecord, onBack }) {
         lastSeenAt: Date.now()
       });
     };
-    const onLoaded = () => {
-      setLoading(false);
-      if (initialSeconds > 0 && initialSeconds < totalSeconds - 5) {
-        player.setCurrentTime(initialSeconds).catch(() => {});
-      }
-    };
 
-    player.on("timeupdate", onTimeUpdate);
-    player.on("ended", onEnded);
-    player.on("loaded", onLoaded);
+    v.addEventListener("loadedmetadata", onLoadedMeta);
+    v.addEventListener("timeupdate", onTime);
+    v.addEventListener("ended", onEnded);
 
     return () => {
       // Final snapshot on unmount
-      recordSnapshot(true);
-      player.off("timeupdate", onTimeUpdate);
-      player.off("ended", onEnded);
-      player.off("loaded", onLoaded);
+      const seconds = v.currentTime || 0;
+      const percent = totalSeconds > 0 ? Math.min(seconds / totalSeconds, 1) : 0;
+      onRecord(video.id, {
+        watchedSeconds: seconds,
+        progress: percent,
+        completed: percent >= 0.95,
+        lastSeenAt: Date.now()
+      });
+      v.removeEventListener("loadedmetadata", onLoadedMeta);
+      v.removeEventListener("timeupdate", onTime);
+      v.removeEventListener("ended", onEnded);
     };
   }, [video.id, totalSeconds]);
 
-  // Auto-hide controls
+  // Auto-hide overlay header
   useEffect(() => {
     let timeout;
     const reset = () => {
@@ -95,7 +92,6 @@ function VideoPlayer({ video, profile, watchEvents, onRecord, onBack }) {
   const progress = watchedSeconds / totalSeconds;
   const completed = progress >= 0.95;
   const color = profile ? AVATAR_COLORS[profile.avatarIndex % AVATAR_COLORS.length] : AVATAR_COLORS[0];
-  const embedSrc = `https://player.vimeo.com/video/${video.vimeoId}?h=${video.vimeoHash}&title=0&byline=0&portrait=0&dnt=1`;
 
   return (
     <div className="player-page">
@@ -125,12 +121,13 @@ function VideoPlayer({ video, profile, watchEvents, onRecord, onBack }) {
           </div>
         )}
         <div className="vimeo-wrap" style={{ background: video.poster }}>
-          <iframe
-            ref={iframeRef}
-            src={embedSrc}
-            allow="autoplay; fullscreen; picture-in-picture"
-            allowFullScreen
-            title={video.title}
+          <video
+            ref={videoRef}
+            src={video.videoUrl}
+            poster={video.thumbnail}
+            controls
+            playsInline
+            preload="metadata"
           />
         </div>
       </div>

@@ -968,7 +968,8 @@ a { color: inherit; text-decoration: none; }
   aspect-ratio: 16 / 9;
   width: 100%;
 }
-.vimeo-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: none; }
+.vimeo-wrap iframe,
+.vimeo-wrap video { position: absolute; inset: 0; width: 100%; height: 100%; border: none; background: #000; }
 
 .player-loader {
   position: absolute;
