@@ -135,7 +135,14 @@ function VideoPlayer({ video, profile, watchEvents, onRecord, onBack }) {
             controls
             playsInline
             preload="metadata"
-          />
+          >
+            {video.subtitles?.fr && (
+              <track kind="subtitles" srcLang="fr" label="Français" src={video.subtitles.fr} default />
+            )}
+            {video.subtitles?.en && (
+              <track kind="subtitles" srcLang="en" label="English" src={video.subtitles.en} />
+            )}
+          </video>
         </div>
       </div>
 

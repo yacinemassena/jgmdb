@@ -12,6 +12,13 @@ const TWEAKS = /*EDITMODE-BEGIN*/{
 
 // ── Video catalog ────────────────────────────────────────────────────────────
 const R2_BASE = "https://pub-f7a0c015c98f48b0b6b872c167a332f9.r2.dev";
+// Subtitles are served same-origin from the Go server; deriving the URL by
+// slug keeps the catalog readable. Add `subtitles: subsFor("<slug>")` once
+// the .vtt pair has been generated for that video.
+const subsFor = (slug) => ({
+  fr: `/subtitles/${slug}.fr.vtt`,
+  en: `/subtitles/${slug}.en.vtt`,
+});
 
 const VIDEOS = [
   {
@@ -24,7 +31,8 @@ const VIDEOS = [
     thumbnail: `${R2_BASE}/thumbnails/roadmap.jpg`,
     videoUrl: `${R2_BASE}/videos/roadmap.mp4`,
     poster: "linear-gradient(135deg, #1e3a8a 0%, #0f172a 100%)",
-    accent: "#3B82F6"
+    accent: "#3B82F6",
+    subtitles: subsFor("roadmap")
   },
   {
     id: "v2",
@@ -36,7 +44,8 @@ const VIDEOS = [
     thumbnail: `${R2_BASE}/thumbnails/mindset-scaling.jpg`,
     videoUrl: `${R2_BASE}/videos/mindset-scaling.mp4`,
     poster: "linear-gradient(135deg, #134e4a 0%, #0f172a 100%)",
-    accent: "#14B8A6"
+    accent: "#14B8A6",
+    subtitles: subsFor("mindset-scaling")
   },
   {
     id: "v3",
@@ -49,7 +58,8 @@ const VIDEOS = [
     videoUrl: `${R2_BASE}/videos/game-plan.mp4`,
     poster: "linear-gradient(135deg, #422006 0%, #0f172a 100%)",
     accent: "#CA8A04",
-    hidden: true
+    hidden: true,
+    subtitles: subsFor("game-plan")
   },
   {
     id: "v4",
@@ -62,7 +72,8 @@ const VIDEOS = [
     videoUrl: `${R2_BASE}/videos/lever-des-millions.mp4`,
     poster: "linear-gradient(135deg, #831843 0%, #0f172a 100%)",
     accent: "#EC4899",
-    hidden: true
+    hidden: true,
+    subtitles: subsFor("lever-des-millions")
   }
 ];
 

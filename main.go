@@ -4,11 +4,18 @@ import (
 	"encoding/json"
 	"io"
 	"log"
+	"mime"
 	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
 )
+
+func init() {
+	// Some hosts don't ship text/vtt in the default MIME table; browsers
+	// reject WebVTT served with the wrong content type.
+	_ = mime.AddExtensionType(".vtt", "text/vtt; charset=utf-8")
+}
 
 var (
 	stateMu   sync.Mutex
