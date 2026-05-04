@@ -191,8 +191,8 @@ const ACCESS_KEY = "jgmdb-access-ok";
 const ADMIN_KEY = "jgmdb-admin-ok";
 const ADMIN_PASSWORD = "nourjamo"; // hardcoded admin pass — not user-editable
 
-function PasswordGate({ userPassword, onUnlock, onAdminUnlock }) {
-  const [mode, setMode] = useState("user"); // "user" | "admin"
+function PasswordGate({ userPassword, onUnlock, onAdminUnlock, adminOnly, onCancel }) {
+  const [mode, setMode] = useState(adminOnly ? "admin" : "user"); // "user" | "admin"
   const [value, setValue] = useState("");
   const [error, setError] = useState(false);
 
@@ -221,33 +221,53 @@ function PasswordGate({ userPassword, onUnlock, onAdminUnlock }) {
   const isAdmin = mode === "admin";
 
   return (
-    <div className="gate-page">
+    <div className={`gate-page ${isAdmin ? "gate-page-admin" : ""}`}>
       <main className="gate-main">
-        <form className="gate-form" onSubmit={submit}>
-          <h1 className="gate-title">{isAdmin ? "Accès admin" : "Accès protégé"}</h1>
+        <form className={`gate-form ${isAdmin ? "gate-form-admin" : ""}`} onSubmit={submit}>
+          {isAdmin ? (
+            <>
+              <div className="gate-admin-emblem">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="4" y="11" width="16" height="10" rx="2"/>
+                  <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+                </svg>
+              </div>
+              <div className="gate-admin-pill">Admin</div>
+              <h1 className="gate-title">Panneau d'administration</h1>
+              <p className="gate-admin-sub">Authentification administrateur requise</p>
+            </>
+          ) : (
+            <h1 className="gate-title">Accès protégé</h1>
+          )}
           <input
             className={`field-input ${error ? "error" : ""}`}
             type="password"
             value={value}
             onChange={e => { setValue(e.target.value); if (error) setError(false); }}
-            placeholder="Mot de passe"
+            placeholder={isAdmin ? "Mot de passe administrateur" : "Mot de passe"}
             autoFocus
             autoComplete="off"
           />
           {error && <span className="field-error">Mot de passe incorrect</span>}
           <button type="submit" className="primary-btn" disabled={!value.trim()}>
-            Entrer
+            {isAdmin ? "Accéder au panneau" : "Entrer"}
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M5 12h14M13 5l7 7-7 7"/></svg>
           </button>
         </form>
       </main>
-      <button
-        type="button"
-        className="gate-admin-link"
-        onClick={() => setMode(m => m === "admin" ? "user" : "admin")}
-      >
-        {isAdmin ? "← Accès utilisateur" : "Accès admin →"}
-      </button>
+      {adminOnly ? (
+        <button type="button" className="gate-admin-link" onClick={onCancel}>
+          ← Retour
+        </button>
+      ) : (
+        <button
+          type="button"
+          className="gate-admin-link"
+          onClick={() => setMode(m => m === "admin" ? "user" : "admin")}
+        >
+          {isAdmin ? "← Accès utilisateur" : "Accès admin →"}
+        </button>
+      )}
     </div>
   );
 }
@@ -260,6 +280,7 @@ function App() {
   const [adminMode, setAdminMode] = useState(() => {
     try { return sessionStorage.getItem(ADMIN_KEY) === "1"; } catch { return false; }
   });
+  const [adminGateOpen, setAdminGateOpen] = useState(false);
   const [state, setState] = useState(null); // null until first fetch resolves
   const [hash, navigate] = useHashRoute();
   const [pageTransition, setPageTransition] = useState(false);
@@ -326,6 +347,19 @@ function App() {
         userPassword={state.accessPassword || "nour"}
         onUnlock={() => setUnlocked(true)}
         onAdminUnlock={() => { setUnlocked(true); setAdminMode(true); navigate("#/admin"); }}
+      />
+    );
+  }
+
+  // Admin-only gate (re-prompted from inside the app, e.g. profile picker)
+  if (adminGateOpen && !adminMode) {
+    return (
+      <PasswordGate
+        adminOnly
+        userPassword={state.accessPassword || "nour"}
+        onUnlock={() => {}}
+        onAdminUnlock={() => { setAdminGateOpen(false); setAdminMode(true); navigate("#/admin"); }}
+        onCancel={() => setAdminGateOpen(false)}
       />
     );
   }
@@ -417,7 +451,7 @@ function App() {
   } else if (route.startsWith("/profiles/edit")) {
     page = <EditProfiles profiles={state.profiles} onUpdate={updateProfile} onDone={() => navigate("#/profiles")} />;
   } else if (route.startsWith("/profiles") || route === "" || route === "/") {
-    page = <ProfilePicker profiles={state.profiles} onSelect={setActiveProfile} onAdd={() => navigate("#/profiles/new")} onEdit={() => navigate("#/profiles/edit")} />;
+    page = <ProfilePicker profiles={state.profiles} onSelect={setActiveProfile} onAdd={() => navigate("#/profiles/new")} onEdit={() => navigate("#/profiles/edit")} onAdminAccess={adminMode ? () => navigate("#/admin") : () => setAdminGateOpen(true)} />;
   } else if (route.startsWith("/watch/")) {
     const videoId = route.replace("/watch/", "");
     const video = visibleVideos.find(v => v.id === videoId);

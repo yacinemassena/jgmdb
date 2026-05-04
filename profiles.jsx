@@ -2,7 +2,7 @@
 // Profile Picker — Netflix-style
 // =============================================================================
 
-function ProfilePicker({ profiles, onSelect, onAdd, onEdit }) {
+function ProfilePicker({ profiles, onSelect, onAdd, onEdit, onAdminAccess }) {
   const [selectingId, setSelectingId] = useState(null);
 
   const handleSelect = (id) => {
@@ -73,6 +73,12 @@ function ProfilePicker({ profiles, onSelect, onAdd, onEdit }) {
       </main>
 
       <footer className="picker-footer"></footer>
+
+      {onAdminAccess && (
+        <button type="button" className="gate-admin-link" onClick={onAdminAccess}>
+          Accès admin →
+        </button>
+      )}
     </div>
   );
 }
