@@ -114,12 +114,27 @@ const defaultState = {
   // Admin-editable settings (persisted server-side)
   accessPassword: "nour",
   // videoOverrides: { [videoId]: { title?, hidden? } } — admin edits without losing source data
-  videoOverrides: {}
+  videoOverrides: {},
+  // Admin-uploaded videos (persisted server-side, append-only catalog)
+  customVideos: [],
+  // Explicit display order across hardcoded + custom IDs. IDs not in this
+  // array sink to the end in source order — self-healing on first persist.
+  videoOrder: []
 };
 
 function mergeVideos(videos, overrides) {
   const o = overrides || {};
   return videos.map(v => ({ ...v, ...(o[v.id] || {}) }));
+}
+
+function applyOrder(videos, order) {
+  if (!order || order.length === 0) return videos;
+  const idx = new Map(order.map((id, i) => [id, i]));
+  return [...videos].sort((a, b) => {
+    const ai = idx.has(a.id) ? idx.get(a.id) : Number.MAX_SAFE_INTEGER;
+    const bi = idx.has(b.id) ? idx.get(b.id) : Number.MAX_SAFE_INTEGER;
+    return ai - bi;
+  });
 }
 
 async function fetchState() {
@@ -440,8 +455,39 @@ function App() {
     setState(s => ({ ...s, accessPassword: trimmed }));
   };
 
-  // Merged video catalog = source + admin overrides
-  const allVideos = mergeVideos(VIDEOS, state.videoOverrides);
+  const addCustomVideo = (entry) => {
+    const id = "cv_" + Math.random().toString(36).slice(2, 10);
+    const newVideo = { ...entry, id, hidden: false, createdAt: Date.now() };
+    setState(s => {
+      const customs = s.customVideos || [];
+      const order = s.videoOrder || [];
+      // First add: materialize the implicit current order (hardcoded then any
+      // existing customs) so the new entry doesn't get sorted to the front.
+      const nextOrder = order.length
+        ? [...order, id]
+        : [...VIDEOS.map(v => v.id), ...customs.map(v => v.id), id];
+      return { ...s, customVideos: [...customs, newVideo], videoOrder: nextOrder };
+    });
+    return id;
+  };
+
+  const deleteCustomVideo = (id) => {
+    setState(s => ({
+      ...s,
+      customVideos: (s.customVideos || []).filter(v => v.id !== id),
+      videoOrder: (s.videoOrder || []).filter(x => x !== id)
+    }));
+  };
+
+  const setVideoOrder = (ids) => {
+    setState(s => ({ ...s, videoOrder: ids }));
+  };
+
+  // Merged video catalog = (hardcoded ∪ custom) + admin overrides + explicit order
+  const allVideos = applyOrder(
+    mergeVideos([...VIDEOS, ...(state.customVideos || [])], state.videoOverrides),
+    state.videoOrder
+  );
   const visibleVideos = allVideos.filter(v => !v.hidden);
 
   // Route resolution
@@ -463,10 +509,14 @@ function App() {
         watchEvents={state.watchEvents}
         videos={allVideos}
         currentPassword={state.accessPassword || "nour"}
+        adminPassword={ADMIN_PASSWORD}
         onUpdateVideo={updateVideoOverride}
         onUpdateProfile={updateProfile}
         onDeleteProfile={deleteProfile}
         onUpdatePassword={updateAccessPassword}
+        onAddCustomVideo={addCustomVideo}
+        onDeleteCustomVideo={deleteCustomVideo}
+        onSetVideoOrder={setVideoOrder}
         onBack={() => navigate(activeProfile ? "#/home" : "#/profiles")}
       />
     ) : null;
