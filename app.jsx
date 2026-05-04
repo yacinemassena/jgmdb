@@ -74,6 +74,19 @@ const VIDEOS = [
     accent: "#EC4899",
     hidden: true,
     subtitles: subsFor("lever-des-millions")
+  },
+  {
+    id: "v5",
+    title: "Closing investisseur en live",
+    category: "Levée de fonds",
+    durationSeconds: 9086,
+    description: "Session VIP en mastermind à Dubai : la méthode pour closer des investisseurs sur des tickets à 7 et 8 chiffres. Comment qualifier un prospect par budget et timing, le ratio 70/30 entre écoute et parole du top performer, et la narration des opérations passées (achat à 4,45M, revente à 14,2M en sept jours) qui transforme le sceptique en investisseur récurrent.",
+    chapter: "Module 05",
+    thumbnail: `${R2_BASE}/thumbnails/closing-investisseur.jpg`,
+    videoUrl: `${R2_BASE}/videos/closing-investisseur.mp4`,
+    poster: "linear-gradient(135deg, #7c2d12 0%, #0f172a 100%)",
+    accent: "#F97316",
+    subtitles: subsFor("closing-investisseur")
   }
 ];
 

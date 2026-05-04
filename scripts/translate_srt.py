@@ -30,27 +30,36 @@ MAX_RETRIES = 3
 
 TS_RE = re.compile(r"(\d{2}:\d{2}:\d{2},\d{3})\s*-->\s*(\d{2}:\d{2}:\d{2},\d{3})")
 
-SYSTEM_PROMPT = """You are a professional French→English subtitle translator working on a real-estate investment training course (marchand-de-biens / property flipping in France).
+LANG_NAMES = {"fr": "French", "en": "English", "es": "Spanish", "de": "German", "it": "Italian", "pt": "Portuguese", "ar": "Arabic"}
 
-You will receive a JSON object with a `cues` array. Each entry is `{"i": <int>, "t": "<French text>"}`. The cues are CONSECUTIVE chunks of speech that together form longer sentences — you can READ them as context, but you must TRANSLATE each cue STRICTLY in isolation.
 
-You must return a JSON object with a `translations` array. Each entry must be `{"i": <same int>, "t": "<English text>"}`.
+def build_system_prompt(src_lang, tgt_lang):
+    src = LANG_NAMES.get(src_lang, src_lang)
+    tgt = LANG_NAMES.get(tgt_lang, tgt_lang)
+    return f"""You are a professional {src}→{tgt} subtitle translator working on a real-estate / investment training course (the speaker runs marchand-de-biens — property flipping — and investor fundraising operations).
+
+You will receive a JSON object with a `cues` array. Each entry is `{{"i": <int>, "t": "<{src} text>"}}`. The cues are CONSECUTIVE chunks of speech that together form longer sentences — you can READ them as context, but you must TRANSLATE each cue STRICTLY in isolation.
+
+You must return a JSON object with a `translations` array. Each entry must be `{{"i": <same int>, "t": "<{tgt} text>"}}`.
 
 CRITICAL — boundary preservation:
 - Translate cue N's text into cue N's translation. NEVER move content from cue N into cue N-1 or N+1, even if it would read more naturally as a redistributed sentence.
 - If a digit (e.g. "26", "100", "30%") appears in cue N's source, it MUST appear in cue N's translation — never in a neighbor.
 - If a proper noun (Jean-Guillaume, BIFF, Versailles, etc.) appears in cue N's source, it MUST appear in cue N's translation.
-- Fragments stay fragments. If cue N is "avec les 70", the translation is "with the 70" — DO NOT pull content from cue N+1 to make it a complete English sentence.
+- Fragments stay fragments. If cue N is a partial phrase, the translation is a partial phrase — DO NOT pull content from cue N+1 to make it a complete sentence.
 - Subtitles are timed to the exact spoken word — redistributing meaning across cues breaks the sync.
 
 Other rules:
 1. Return EXACTLY one translation per input cue, with the same `i` value. Never merge, split, drop, or reorder cues.
-2. Translate into natural spoken English. The speaker is informal and energetic; preserve that register.
-3. Do NOT translate proper nouns: people's names, place names (Versailles, Miami, BIFF, etc.), brand names.
+2. Translate into natural spoken {tgt}. The speaker is informal and energetic; preserve that register.
+3. Do NOT translate proper nouns: people's names, place names, brand names.
 4. Keep numbers, currency amounts, and percentages exactly as in source (e.g. "200M$" stays "200M$").
 5. Each translated `t` should be roughly the same length as the source.
 6. Do not invent content. If a cue is a single word, translate it as a single word.
 """
+
+
+SYSTEM_PROMPT = build_system_prompt("fr", "en")
 
 
 def parse_srt(text):
@@ -86,14 +95,14 @@ def write_srt(cues, path):
     Path(path).write_text("\n".join(lines), encoding="utf-8")
 
 
-def _call_model(client, payload, expected_count):
+def _call_model(client, payload, expected_count, system_prompt=None):
     """One LLM call. Returns dict {idx: text}."""
     r = client.chat.completions.create(
         model=MODEL,
         temperature=0.2,
         response_format={"type": "json_object"},
         messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
+            {"role": "system", "content": system_prompt or SYSTEM_PROMPT},
             {"role": "user", "content": (
                 f"You will receive {expected_count} cue(s). "
                 f"Your `translations` array MUST contain EXACTLY {expected_count} item(s), "
@@ -107,12 +116,12 @@ def _call_model(client, payload, expected_count):
     return {item["i"]: item["t"] for item in translations if "i" in item and "t" in item}
 
 
-def translate_chunk(client, chunk):
-    """chunk: list of (idx, start, end, fr_text). Returns dict {idx: en_text}.
+def translate_chunk(client, chunk, system_prompt=None):
+    """chunk: list of (idx, start, end, src_text). Returns dict {idx: tgt_text}.
 
     Strategy: try the chunk as a batch. For any cues missing from the response,
     retranslate individually. After MAX_RETRIES individual attempts fail,
-    fall back to the original French text rather than aborting the whole video.
+    fall back to the original source text rather than aborting the whole video.
     """
     input_ids = {idx for idx, *_ in chunk}
     text_by_idx = {idx: text for idx, _s, _e, text in chunk}
@@ -120,7 +129,7 @@ def translate_chunk(client, chunk):
 
     out = {}
     try:
-        out = _call_model(client, payload, len(chunk))
+        out = _call_model(client, payload, len(chunk), system_prompt)
     except Exception as e:
         print(f"    chunk @{chunk[0][0]} batch call failed: {e}", file=sys.stderr)
 
@@ -128,14 +137,12 @@ def translate_chunk(client, chunk):
     if not missing:
         return out
 
-    # Retry missing cues one-by-one (last-cue-of-chunk drop is the common
-    # failure mode; isolating it usually succeeds).
     for idx in missing:
         single_payload = {"cues": [{"i": idx, "t": text_by_idx[idx]}]}
         translated = None
         for attempt in range(1, MAX_RETRIES + 1):
             try:
-                got = _call_model(client, single_payload, 1)
+                got = _call_model(client, single_payload, 1, system_prompt)
                 if idx in got:
                     translated = got[idx]
                     break
@@ -143,7 +150,7 @@ def translate_chunk(client, chunk):
                 print(f"    cue {idx} attempt {attempt} failed: {e}", file=sys.stderr)
             time.sleep(2 ** attempt)
         if translated is None:
-            print(f"    cue {idx} fallback to French (translation failed)", file=sys.stderr)
+            print(f"    cue {idx} fallback to source (translation failed)", file=sys.stderr)
             translated = text_by_idx[idx]
         out[idx] = translated
 
@@ -151,11 +158,25 @@ def translate_chunk(client, chunk):
 
 
 def main():
-    if len(sys.argv) != 3:
-        print("usage: translate_srt.py <fr.srt> <en.srt>", file=sys.stderr)
+    args = sys.argv[1:]
+    src_lang, tgt_lang = "fr", "en"
+    positional = []
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a == "--from" and i + 1 < len(args):
+            src_lang = args[i + 1]; i += 2
+        elif a == "--to" and i + 1 < len(args):
+            tgt_lang = args[i + 1]; i += 2
+        else:
+            positional.append(a); i += 1
+
+    if len(positional) != 2:
+        print("usage: translate_srt.py [--from <lang>] [--to <lang>] <src.srt> <dst.srt>", file=sys.stderr)
         sys.exit(1)
 
-    src_path, dst_path = sys.argv[1], sys.argv[2]
+    src_path, dst_path = positional
+    system_prompt = build_system_prompt(src_lang, tgt_lang)
     api_key = None
     env_path = Path(__file__).resolve().parent.parent / ".env"
     if env_path.exists():
@@ -179,7 +200,7 @@ def main():
     all_translations = {}
     t0 = time.time()
     with ThreadPoolExecutor(max_workers=MAX_WORKERS) as ex:
-        futures = {ex.submit(translate_chunk, client, c): c for c in chunks}
+        futures = {ex.submit(translate_chunk, client, c, system_prompt): c for c in chunks}
         done_count = 0
         for fut in as_completed(futures):
             try:
