@@ -337,7 +337,7 @@ function App() {
 
   useEffect(() => {
     if (state == null) return;
-    const needsProfile = route.startsWith("/home") || route.startsWith("/watch");
+    const needsProfile = route.startsWith("/home") || route.startsWith("/watch") || route.startsWith("/module");
     if (needsProfile && !activeProfile) {
       navigate("#/profiles");
     }
@@ -520,8 +520,29 @@ function App() {
         onBack={() => navigate(activeProfile ? "#/home" : "#/profiles")}
       />
     ) : null;
+  } else if (route.startsWith("/module/")) {
+    const category = decodeURIComponent(route.replace("/module/", ""));
+    const moduleVideos = visibleVideos.filter(v => (v.category || "Autres") === category);
+    page = moduleVideos.length
+      ? <ModulePage
+          profile={activeProfile}
+          watchEvents={state.watchEvents}
+          videos={moduleVideos}
+          category={category}
+          onWatch={(id) => navigate(`#/watch/${id}`)}
+          onBack={() => navigate("#/home")}
+          onSwitchProfile={switchProfile}
+        />
+      : <NotFound onBack={() => navigate("#/home")} />;
   } else if (route.startsWith("/home")) {
-    page = <HomePage profile={activeProfile} watchEvents={state.watchEvents} videos={visibleVideos} onWatch={(id) => navigate(`#/watch/${id}`)} onSwitchProfile={switchProfile} />;
+    page = <HomePage
+      profile={activeProfile}
+      watchEvents={state.watchEvents}
+      videos={visibleVideos}
+      onWatch={(id) => navigate(`#/watch/${id}`)}
+      onOpenModule={(cat) => navigate(`#/module/${encodeURIComponent(cat)}`)}
+      onSwitchProfile={switchProfile}
+    />;
   } else {
     page = <NotFound onBack={() => navigate("#/profiles")} />;
   }

@@ -303,8 +303,16 @@ function UploadVideoSection({ adminPass, currentCount, onAdd }) {
               <input className="field-input" value={chapter} onChange={e => setChapter(e.target.value)} disabled={uploading} />
             </div>
             <div className="upload-field">
-              <label>Catégorie</label>
-              <input className="field-input" value={category} onChange={e => setCategory(e.target.value)} disabled={uploading} placeholder="Stratégie, Mindset…" />
+              <label>Catégorie <span className="field-hint">(choisir ou créer)</span></label>
+              <input
+                className="field-input"
+                list="admin-category-options"
+                value={category}
+                onChange={e => setCategory(e.target.value)}
+                disabled={uploading}
+                placeholder="Stratégie, Mindset…"
+                autoComplete="off"
+              />
             </div>
             <div className="upload-field">
               <label>Couleur d'accent</label>
@@ -389,8 +397,15 @@ function VideoEditPanel({ video, onSave, onCancel }) {
             <input className="field-input" value={draft.chapter} onChange={e => set("chapter", e.target.value)} placeholder="Module 06" />
           </div>
           <div className="upload-field">
-            <label>Catégorie</label>
-            <input className="field-input" value={draft.category} onChange={e => set("category", e.target.value)} placeholder="Stratégie, Mindset…" />
+            <label>Catégorie <span className="field-hint">(choisir ou créer)</span></label>
+            <input
+              className="field-input"
+              list="admin-category-options"
+              value={draft.category}
+              onChange={e => set("category", e.target.value)}
+              placeholder="Stratégie, Mindset…"
+              autoComplete="off"
+            />
           </div>
           <div className="upload-field">
             <label>Couleur d'accent</label>
@@ -603,8 +618,18 @@ function AdminView({
     setTimeout(() => setPwdSaved(false), 1800);
   };
 
+  // Distinct categories already in use, alphabetically — fed to a shared <datalist>
+  // so upload + edit forms suggest existing names (no typo-induced duplicates) while
+  // still letting the admin type a brand new one.
+  const existingCategories = Array.from(
+    new Set(videos.map(v => (v.category || "").trim()).filter(Boolean))
+  ).sort((a, b) => a.localeCompare(b, "fr", { sensitivity: "base" }));
+
   return (
     <div className="admin-page">
+      <datalist id="admin-category-options">
+        {existingCategories.map(c => <option key={c} value={c} />)}
+      </datalist>
       <header className="admin-header">
         <div className="admin-header-inner">
           <div className="brand-mark">
