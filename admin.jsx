@@ -355,9 +355,73 @@ function UploadVideoSection({ adminPass, currentCount, onAdd }) {
 
 // ── Drag-and-drop video ordering ─────────────────────────────────────────────
 
+function VideoEditPanel({ video, onSave, onCancel }) {
+  const [draft, setDraft] = useState({
+    title: video.title || "",
+    chapter: video.chapter || "",
+    category: video.category || "",
+    description: video.description || "",
+    accent: video.accent || ACCENT_PRESETS[0]
+  });
+  const set = (k, v) => setDraft(d => ({ ...d, [k]: v }));
+  const dirty =
+    draft.title !== (video.title || "") ||
+    draft.chapter !== (video.chapter || "") ||
+    draft.category !== (video.category || "") ||
+    draft.description !== (video.description || "") ||
+    draft.accent !== (video.accent || ACCENT_PRESETS[0]);
+
+  return (
+    <div className="dragcard-edit-panel">
+      <div className="upload-fields">
+        <div className="upload-field">
+          <label>Titre</label>
+          <input className="field-input" value={draft.title} onChange={e => set("title", e.target.value)} />
+        </div>
+        <div className="upload-field">
+          <label>Description</label>
+          <textarea className="field-input upload-textarea" rows={3}
+            value={draft.description} onChange={e => set("description", e.target.value)} />
+        </div>
+        <div className="upload-field-row">
+          <div className="upload-field">
+            <label>Chapitre</label>
+            <input className="field-input" value={draft.chapter} onChange={e => set("chapter", e.target.value)} placeholder="Module 06" />
+          </div>
+          <div className="upload-field">
+            <label>Catégorie</label>
+            <input className="field-input" value={draft.category} onChange={e => set("category", e.target.value)} placeholder="Stratégie, Mindset…" />
+          </div>
+          <div className="upload-field">
+            <label>Couleur d'accent</label>
+            <div className="upload-swatches">
+              {ACCENT_PRESETS.map(c => (
+                <button key={c} type="button"
+                  className={`upload-swatch ${draft.accent === c ? "active" : ""}`}
+                  style={{ background: c }} onClick={() => set("accent", c)} aria-label={c} />
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div className="upload-actions">
+        <button className="ghost-btn" onClick={onCancel}>Annuler</button>
+        <button className="primary-btn" disabled={!dirty || !draft.title.trim()} onClick={() => onSave({
+          title: draft.title.trim(),
+          chapter: draft.chapter.trim(),
+          category: draft.category.trim(),
+          description: draft.description.trim(),
+          accent: draft.accent
+        })}>Enregistrer</button>
+      </div>
+    </div>
+  );
+}
+
 function VideoOrderGrid({ videos, onReorder, onUpdateVideo, onDeleteCustom }) {
   const ref = useRef(null);
   const [confirmDel, setConfirmDel] = useState(null);
+  const [editingId, setEditingId] = useState(null);
 
   useEffect(() => {
     if (!ref.current || !window.Sortable) return;
@@ -380,57 +444,77 @@ function VideoOrderGrid({ videos, onReorder, onUpdateVideo, onDeleteCustom }) {
 
   return (
     <div className="dragcard-grid" ref={ref}>
-      {videos.map(v => (
-        <div key={v.id} data-id={v.id} className={`dragcard ${v.hidden ? "is-hidden" : ""}`}>
-          <button className="dragcard-handle" aria-label="Réordonner" type="button">
-            <svg width="14" height="20" viewBox="0 0 14 20" fill="currentColor">
-              <circle cx="4" cy="4" r="1.6"/><circle cx="10" cy="4" r="1.6"/>
-              <circle cx="4" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/>
-              <circle cx="4" cy="16" r="1.6"/><circle cx="10" cy="16" r="1.6"/>
-            </svg>
-          </button>
-          <div className="dragcard-thumb"
-            style={{
-              backgroundImage: v.thumbnail ? `url(${v.thumbnail})` : undefined,
-              backgroundColor: v.thumbnail ? "#0f172a" : "transparent",
-              background: v.thumbnail ? undefined : (v.poster || `linear-gradient(135deg, ${v.accent || "#2563EB"}33 0%, #0f172a 100%)`)
-            }}>
-            {!v.thumbnail && <span className="dragcard-thumb-tag">{(v.chapter || "").replace("Module ", "M")}</span>}
-          </div>
-          <div className="dragcard-body">
-            <div className="dragcard-meta">
-              <span className="dragcard-chapter">{v.chapter}</span>
-              <span className="dragcard-cat" style={{ color: v.accent }}>{v.category}</span>
-            </div>
-            <input
-              className="field-input dragcard-title"
-              value={v.title}
-              onChange={e => onUpdateVideo(v.id, { title: e.target.value })}
-              placeholder="Titre"
-            />
-          </div>
-          <div className="dragcard-actions">
-            <button
-              className={v.hidden ? "ghost-btn-sm" : "danger-btn-sm"}
-              onClick={() => onUpdateVideo(v.id, { hidden: !v.hidden })}
-            >
-              {v.hidden ? "Afficher" : "Masquer"}
-            </button>
-            {v.id.startsWith("cv_") && (
-              confirmDel === v.id ? (
-                <div className="manage-confirm">
-                  <button className="danger-btn-sm" onClick={() => { onDeleteCustom(v.id); setConfirmDel(null); }}>Confirmer</button>
-                  <button className="ghost-btn-sm" onClick={() => setConfirmDel(null)}>Annuler</button>
+      {videos.map(v => {
+        const isEditing = editingId === v.id;
+        return (
+          <div key={v.id} data-id={v.id} className={`dragcard ${v.hidden ? "is-hidden" : ""} ${isEditing ? "editing" : ""}`}>
+            <div className="dragcard-row">
+              <button className="dragcard-handle" aria-label="Réordonner" type="button">
+                <svg width="14" height="20" viewBox="0 0 14 20" fill="currentColor">
+                  <circle cx="4" cy="4" r="1.6"/><circle cx="10" cy="4" r="1.6"/>
+                  <circle cx="4" cy="10" r="1.6"/><circle cx="10" cy="10" r="1.6"/>
+                  <circle cx="4" cy="16" r="1.6"/><circle cx="10" cy="16" r="1.6"/>
+                </svg>
+              </button>
+              <div className="dragcard-thumb"
+                style={{
+                  backgroundImage: v.thumbnail ? `url(${v.thumbnail})` : undefined,
+                  backgroundColor: v.thumbnail ? "#0f172a" : "transparent",
+                  background: v.thumbnail ? undefined : (v.poster || `linear-gradient(135deg, ${v.accent || "#2563EB"}33 0%, #0f172a 100%)`)
+                }}>
+                {!v.thumbnail && <span className="dragcard-thumb-tag">{(v.chapter || "").replace("Module ", "M")}</span>}
+              </div>
+              <div className="dragcard-body">
+                <div className="dragcard-meta">
+                  <span className="dragcard-chapter">{v.chapter}</span>
+                  <span className="dragcard-cat" style={{ color: v.accent }}>{v.category}</span>
                 </div>
-              ) : (
-                <button className="icon-btn" onClick={() => setConfirmDel(v.id)} aria-label="Supprimer la vidéo">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                <input
+                  className="field-input dragcard-title"
+                  value={v.title}
+                  onChange={e => onUpdateVideo(v.id, { title: e.target.value })}
+                  placeholder="Titre"
+                  disabled={isEditing}
+                />
+              </div>
+              <div className="dragcard-actions">
+                <button
+                  className="ghost-btn-sm"
+                  onClick={() => setEditingId(isEditing ? null : v.id)}
+                  aria-label="Modifier la vidéo"
+                >
+                  {isEditing ? "Fermer" : "Modifier"}
                 </button>
-              )
+                <button
+                  className={v.hidden ? "ghost-btn-sm" : "danger-btn-sm"}
+                  onClick={() => onUpdateVideo(v.id, { hidden: !v.hidden })}
+                >
+                  {v.hidden ? "Afficher" : "Masquer"}
+                </button>
+                {v.id.startsWith("cv_") && (
+                  confirmDel === v.id ? (
+                    <div className="manage-confirm">
+                      <button className="danger-btn-sm" onClick={() => { onDeleteCustom(v.id); setConfirmDel(null); }}>Confirmer</button>
+                      <button className="ghost-btn-sm" onClick={() => setConfirmDel(null)}>Annuler</button>
+                    </div>
+                  ) : (
+                    <button className="icon-btn" onClick={() => setConfirmDel(v.id)} aria-label="Supprimer la vidéo">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                    </button>
+                  )
+                )}
+              </div>
+            </div>
+            {isEditing && (
+              <VideoEditPanel
+                video={v}
+                onCancel={() => setEditingId(null)}
+                onSave={(patch) => { onUpdateVideo(v.id, patch); setEditingId(null); }}
+              />
             )}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
